@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeopardy: English Cardinal Numbers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #1a202c; /* Tailwind gray-900 */
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .jeopardy-board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            flex-grow: 1;
+            padding: 20px;
+        }
+
+        .category-header {
+            background-color: #2d3748; /* Tailwind gray-800 */
+            color: #ecc94b; /* Tailwind yellow-400 */
+            font-weight: bold;
+            text-align: center;
+            padding: 15px;
+            text-transform: uppercase;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .question-card {
+            background-color: #2b6cb0; /* Tailwind blue-600 */
+            color: #ecc94b; /* Tailwind yellow-400 */
+            font-size: 2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            height: 120px; /* Fixed height for cards */
+        }
+
+        .question-card:hover {
+            background-color: #3182ce; /* Tailwind blue-500 */
+            transform: scale(1.02);
+        }
+
+        .question-card.answered {
+            background-color: #4a5568; /* Tailwind gray-600 */
+            color: transparent;
+            cursor: default;
+            box-shadow: none;
+        }
+        
+        .question-card.answered:hover {
+            transform: none;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: #2b6cb0;
+            color: white;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 800px;
+            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-question {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.5rem;
+            border-radius: 8px;
+            border: none;
+            margin-bottom: 20px;
+            color: #1a202c;
+            text-align: center;
+        }
+        
+        .answer-input:focus {
+            outline: 4px solid #ecc94b;
+        }
+
+        .submit-btn {
+            background-color: #ecc94b;
+            color: #1a202c;
+            font-weight: bold;
+            font-size: 1.5rem;
+            padding: 15px 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+        }
+
+        .submit-btn:hover {
+            background-color: #d69e2e;
+        }
+
+        .feedback-msg {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 20px;
+            min-height: 40px; /* Prevent layout shift */
+        }
+        
+        .correct { color: #48bb78; } /* green-500 */
+        .incorrect { color: #f56565; } /* red-500 */
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: #2d3748;
+            border-bottom: 4px solid #ecc94b;
+        }
+
+        .score-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ecc94b;
+        }
+
+        .timer-display {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #f6e05e; /* lighter yellow */
+            background: #1a202c;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid #ecc94b;
+        }
+        
+        .timer-warning {
+            color: #f56565;
+            border-color: #f56565;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* End Game Modal */
+        .end-game-modal {
+             background-color: #1a202c;
+             border: 4px solid #ecc94b;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .jeopardy-board {
+                gap: 4px;
+                padding: 10px;
+            }
+            .category-header {
+                font-size: 0.8rem;
+                padding: 10px 5px;
+            }
+            .question-card {
+                font-size: 1.2rem;
+                height: 80px;
+            }
+            .modal-question { font-size: 1.5rem; }
+            .answer-input { font-size: 1.2rem; }
+            .submit-btn { font-size: 1.2rem; padding: 10px 20px; }
+            header { flex-direction: column; gap: 10px; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1 class="text-3xl md:text-4xl font-bold uppercase tracking-wider">Jeopardy!</h1>
+            <p class="text-sm text-gray-400">Intermediate Cardinal Numbers</p>
+        </div>
+        <div class="score-display">
+            Score: $<span id="score">0</span>
+        </div>
+        <div class="timer-display" id="timer">
+            15:00
+        </div>
+    </header>
+
+    <main class="jeopardy-board" id="board">
+        <!-- Categories will be injected here -->
+    </main>
+
+    <!-- Question Modal -->
+    <div class="modal-overlay" id="question-modal">
+        <div class="modal-content">
+            <div id="modal-category-value" class="text-xl text-yellow-400 mb-4 font-bold uppercase tracking-wider"></div>
+            <div class="modal-question" id="modal-question-text">Question goes here</div>
+            
+            <input type="text" id="answer-input" class="answer-input" placeholder="Type your answer in words..." autocomplete="off">
+            
+            <button id="submit-btn" class="submit-btn">Submit Answer</button>
+            <button id="close-modal-btn" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white hidden">Close</button>
+            
+            <div id="feedback-msg" class="feedback-msg"></div>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div class="modal-overlay" id="game-over-modal">
+        <div class="modal-content end-game-modal">
+            <h2 class="text-4xl font-bold text-yellow-400 mb-6" id="game-over-title">Game Over!</h2>
+            <p class="text-2xl mb-4">Final Score:</p>
+            <p class="text-6xl font-bold text-yellow-400 mb-8">$<span id="final-score">0</span></p>
+            <p id="game-over-message" class="text-xl mb-8 text-gray-300"></p>
+            <button onclick="location.reload()" class="submit-btn">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Game Data
+        const categories = [
+            "Tens & Units", 
+            "Hundreds", 
+            "Thousands", 
+            "Math Operations", 
+            "Tricky Numbers"
+        ];
+
+        // Intermediate level numbers. 
+        // Answers must be exactly matching these strings (case-insensitive in logic)
+        const questions = [
+            // Column 1: Tens & Units
+            [
+                { value: 100, q: "Translate: 47", a: "forty-seven" },
+                { value: 200, q: "Translate: 82", a: "eighty-two" },
+                { value: 300, q: "Translate: 99", a: "ninety-nine" },
+                { value: 400, q: "Translate: 53", a: "fifty-three" },
+                { value: 500, q: "Translate: 14", a: "fourteen" } // Tricky spelling for intermediate
+            ],
+            // Column 2: Hundreds
+            [
+                { value: 100, q: "Translate: 105", a: "one hundred five" }, // Accepted with or without 'and' usually, we'll strict it to American standard without 'and' for simplicity, or allow both later. Let's stick to standard US.
+                { value: 200, q: "Translate: 350", a: "three hundred fifty" },
+                { value: 300, q: "Translate: 891", a: "eight hundred ninety-one" },
+                { value: 400, q: "Translate: 612", a: "six hundred twelve" },
+                { value: 500, q: "Translate: 999", a: "nine hundred ninety-nine" }
+            ],
+            // Column 3: Thousands
+            [
+                { value: 100, q: "Translate: 1,000", a: "one thousand" },
+                { value: 200, q: "Translate: 4,500", a: "four thousand five hundred" },
+                { value: 300, q: "Translate: 12,000", a: "twelve thousand" },
+                { value: 400, q: "Translate: 50,200", a: "fifty thousand two hundred" },
+                { value: 500, q: "Translate: 104,000", a: "one hundred four thousand" }
+            ],
+            // Column 4: Math Operations (Word problems resulting in numbers)
+            [
+                { value: 100, q: "Twenty plus thirty equals...", a: "fifty" },
+                { value: 200, q: "One hundred minus fifteen equals...", a: "eighty-five" },
+                { value: 300, q: "Ten times twelve equals...", a: "one hundred twenty" },
+                { value: 400, q: "What is half of one thousand?", a: "five hundred" },
+                { value: 500, q: "Two hundred fifty multiplied by four equals...", a: "one thousand" }
+            ],
+            // Column 5: Tricky Numbers (Spelling focus)
+            [
+                { value: 100, q: "Translate: 40 (Pay attention to spelling!)", a: "forty" },
+                { value: 200, q: "Translate: 90", a: "ninety" },
+                { value: 300, q: "Translate: 8", a: "eight" },
+                { value: 400, q: "Translate: 12", a: "twelve" },
+                { value: 500, q: "Translate: 1,000,000", a: "one million" }
+            ]
+        ];
+
+        // State Variables
+        let score = 0;
+        let currentQuestion = null;
+        let currentCardElement = null;
+        let questionsAnswered = 0;
+        const totalQuestions = 25;
+        
+        // Timer Variables
+        const TIME_LIMIT = 15 * 60; // 15 minutes in seconds
+        let timeRemaining = TIME_LIMIT;
+        let timerInterval;
+
+        // DOM Elements
+        const boardEl = document.getElementById('board');
+        const scoreEl = document.getElementById('score');
+        const timerEl = document.getElementById('timer');
+        
+        const modalOverlay = document.getElementById('question-modal');
+        const modalCatVal = document.getElementById('modal-category-value');
+        const modalQText = document.getElementById('modal-question-text');
+        const answerInput = document.getElementById('answer-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const feedbackMsg = document.getElementById('feedback-msg');
+
+        const gameOverModal = document.getElementById('game-over-modal');
+        const finalScoreEl = document.getElementById('final-score');
+        const gameOverTitle = document.getElementById('game-over-title');
+        const gameOverMessage = document.getElementById('game-over-message');
+
+        // Initialize Game
+        function initGame() {
+            renderBoard();
+            startTimer();
+            
+            // Event Listeners for Modal
+            submitBtn.addEventListener('click', checkAnswer);
+            answerInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    checkAnswer();
+                }
+            });
+            closeModalBtn.addEventListener('click', closeModal);
+        }
+
+        // Render the Jeopardy Board
+        function renderBoard() {
+            boardEl.innerHTML = ''; // Clear existing
+
+            // 1. Render Category Headers
+            categories.forEach(cat => {
+                const header = document.createElement('div');
+                header.className = 'category-header';
+                header.textContent = cat;
+                boardEl.appendChild(header);
+            });
+
+            // 2. Render Question Cards (Row by Row to match Grid layout)
+            // Jeopardy grid is 5 cols x 5 rows of questions. 
+            // Our data array 'questions' is array of columns.
+            // We need to iterate by row index, then column index.
+            
+            for (let rowIndex = 0; rowIndex < 5; rowIndex++) {
+                for (let colIndex = 0; colIndex < 5; colIndex++) {
+                    const qData = questions[colIndex][rowIndex];
+                    
+                    const card = document.createElement('div');
+                    card.className = 'question-card';
+                    card.textContent = '$' + qData.value;
+                    
+                    // Attach data and click event
+                    card.dataset.col = colIndex;
+                    card.dataset.row = rowIndex;
+                    card.addEventListener('click', () => handleCardClick(card, qData, categories[colIndex]));
+                    
+                    boardEl.appendChild(card);
+                }
+            }
+        }
+
+        // Timer Logic
+        function startTimer() {
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                
+                if (timeRemaining <= 60) {
+                    timerEl.classList.add('timer-warning');
+                }
+                
+                if (timeRemaining <= 0) {
+                    endGame("Time's Up!");
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60);
+            let seconds = timeRemaining % 60;
+            if (seconds < 10) seconds = '0' + seconds;
+            timerEl.textContent = `${minutes}:${seconds}`;
+        }
+
+        // Handle clicking a dollar value card
+        function handleCardClick(cardEl, qData, categoryName) {
+            if (cardEl.classList.contains('answered')) return; // Ignore if already played
+
+            currentQuestion = qData;
+            currentCardElement = cardEl;
+
+            // Setup Modal
+            modalCatVal.textContent = `${categoryName} for $${qData.value}`;
+            modalQText.textContent = qData.q;
+            answerInput.value = '';
+            feedbackMsg.textContent = '';
+            feedbackMsg.className = 'feedback-msg'; // Reset classes
+            
+            // UI state
+            submitBtn.classList.remove('hidden');
+            answerInput.classList.remove('hidden');
+            closeModalBtn.classList.add('hidden');
+            answerInput.disabled = false;
+            
+            // Show modal
+            modalOverlay.classList.add('active');
+            
+            // Small delay to ensure focus works after transition
+            setTimeout(() => answerInput.focus(), 100);
+        }
+
+        // Normalize text for comparison (remove spaces, punctuation, lowercase, handle "and")
+        function normalizeAnswer(str) {
+            let normalized = str.toLowerCase().trim();
+            // Remove hyphens and extra spaces
+            normalized = normalized.replace(/[-]/g, ' ').replace(/\s+/g, ' ');
+            // Sometimes people write "one hundred and five". We want to allow it if standard is without.
+            // For this specific intermediate test, we'll strip 'and' if it's used as a connector 
+            // e.g., "one hundred and five" -> "one hundred five"
+            normalized = normalized.replace(/\band\b/g, '').replace(/\s+/g, ' ').trim();
+            return normalized;
+        }
+
+        function checkAnswer() {
+            if (!currentQuestion) return;
+
+            const userAnswer = answerInput.value;
+            if (userAnswer.trim() === '') return; // Don't submit empty
+
+            const normalizedUser = normalizeAnswer(userAnswer);
+            const normalizedCorrect = normalizeAnswer(currentQuestion.a);
+
+            const isCorrect = (normalizedUser === normalizedCorrect);
+
+            // Update UI based on result
+            answerInput.disabled = true;
+            submitBtn.classList.add('hidden');
+            closeModalBtn.classList.remove('hidden');
+            answerInput.classList.add('hidden');
+
+            if (isCorrect) {
+                score += currentQuestion.value;
+                feedbackMsg.textContent = "Correct! +$" + currentQuestion.value;
+                feedbackMsg.className = 'feedback-msg correct';
+            } else {
+                score -= currentQuestion.value;
+                feedbackMsg.innerHTML = `Incorrect! -$$${currentQuestion.value}<br><span class="text-lg text-gray-300">Correct answer was: <b class="text-white">${currentQuestion.a}</b></span>`;
+                feedbackMsg.className = 'feedback-msg incorrect';
+            }
+
+            updateScoreDisplay();
+            
+            // Mark card as played
+            currentCardElement.classList.add('answered');
+            questionsAnswered++;
+
+            // Focus close button for quick keyboard navigation
+            closeModalBtn.focus();
+        }
+
+        function closeModal() {
+            modalOverlay.classList.remove('active');
+            currentQuestion = null;
+            currentCardElement = null;
+
+            // Check for win condition
+            if (questionsAnswered === totalQuestions) {
+                setTimeout(() => endGame("Board Cleared!"), 500);
+            }
+        }
+
+        function updateScoreDisplay() {
+            // Add negative styling if score drops below 0
+            scoreEl.textContent = score;
+            if (score < 0) {
+                scoreEl.style.color = '#f56565'; // Red
+            } else {
+                scoreEl.style.color = '#ecc94b'; // Yellow
+            }
+        }
+
+        function endGame(reason) {
+            clearInterval(timerInterval);
+            
+            gameOverTitle.textContent = reason;
+            finalScoreEl.textContent = score;
+            
+            if (score > 4000) {
+                gameOverMessage.textContent = "Excellent work! You've mastered these numbers.";
+            } else if (score > 0) {
+                gameOverMessage.textContent = "Good job! Keep practicing to increase your score.";
+            } else {
+                gameOverMessage.textContent = "Tough luck! Remember to watch your spelling.";
+            }
+
+            gameOverModal.classList.add('active');
+        }
+
+        // Start the application
+        window.onload = initGame;
+
+    </script>
+</body>
+</html>
